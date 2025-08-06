@@ -1,6 +1,8 @@
 package context
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"path/filepath"
 	"strings"
 	"time"
@@ -8,29 +10,41 @@ import (
 
 // File represents a file in a context with its metadata
 type File struct {
-	Path         string
-	Size         int64
-	Hash         string
-	Language     string
-	TokenCount   int
-	LastModified time.Time
+	ID         string
+	Path       string
+	Name       string
+	Content    string
+	Size       int64
+	Hash       string
+	Language   string
+	Tokens     int       // Renamed from TokenCount for consistency with storage
+	ModifiedAt time.Time // Renamed from LastModified for consistency
 }
 
-// NewFile creates a new file with the given path
-func NewFile(path string) *File {
+// NewFile creates a new file with the given path and name
+func NewFile(path, name string) *File {
 	return &File{
-		Path:         path,
-		LastModified: time.Now(),
+		ID:         generateFileID(),
+		Path:       path,
+		Name:       name,
+		ModifiedAt: time.Now(),
 	}
 }
 
+// generateFileID generates a random ID for a file
+func generateFileID() string {
+	bytes := make([]byte, 8)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
+
 // UpdateMetadata updates all the file's metadata
-func (f *File) UpdateMetadata(size int64, hash, language string, tokenCount int, lastModified time.Time) {
+func (f *File) UpdateMetadata(size int64, hash, language string, tokens int, modifiedAt time.Time) {
 	f.Size = size
 	f.Hash = hash
 	f.Language = language
-	f.TokenCount = tokenCount
-	f.LastModified = lastModified
+	f.Tokens = tokens
+	f.ModifiedAt = modifiedAt
 }
 
 // DetectLanguage detects the programming language based on file extension
@@ -98,7 +112,7 @@ func (f *File) NeedsUpdate(newHash string, newModTime time.Time) bool {
 	}
 
 	// If modification time is newer, needs update
-	if newModTime.After(f.LastModified) {
+	if newModTime.After(f.ModifiedAt) {
 		return true
 	}
 

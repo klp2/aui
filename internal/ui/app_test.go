@@ -166,7 +166,7 @@ func TestAppAddAgent(t *testing.T) {
 	app := InitialApp()
 	initialCount := len(app.Agents)
 
-	app.AddAgent("GPT-4", "gpt-4-turbo")
+	app.AddAgent("GPT-4", "gpt-4-turbo", "openai")
 
 	if len(app.Agents) != initialCount+1 {
 		t.Errorf("After AddAgent, agent count = %v, want %v",

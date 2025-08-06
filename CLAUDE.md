@@ -144,6 +144,14 @@ git checkout -b feature/short-description
 # Keep branches small and focused
 # One feature/fix per branch
 # Merge frequently to avoid conflicts
+
+# IMPORTANT: Always use rebase merges to maintain linear history
+git checkout main
+git merge --ff-only feature/branch-name
+# OR use rebase if needed:
+git rebase main feature/branch-name
+git checkout main
+git merge --ff-only feature/branch-name
 ```
 
 #### Commit Standards

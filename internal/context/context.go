@@ -1,7 +1,13 @@
 package context
 
+import (
+	"crypto/rand"
+	"encoding/hex"
+)
+
 // Context represents a collection of files and metadata for AI agent consumption
 type Context struct {
+	ID          string
 	Name        string
 	Description string
 	Files       []*File
@@ -11,11 +17,19 @@ type Context struct {
 // NewContext creates a new context with the given name and description
 func NewContext(name, description string) *Context {
 	return &Context{
+		ID:          generateID(),
 		Name:        name,
 		Description: description,
 		Files:       []*File{},
 		TotalTokens: 0,
 	}
+}
+
+// generateID generates a random ID for a context
+func generateID() string {
+	bytes := make([]byte, 8)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
 }
 
 // AddFile adds a file to the context, replacing if it already exists with different hash
@@ -32,16 +46,16 @@ func (c *Context) AddFile(file *File) {
 				return
 			}
 			// Different hash, replace the old version
-			c.TotalTokens -= f.TokenCount
+			c.TotalTokens -= f.Tokens
 			c.Files[i] = file
-			c.TotalTokens += file.TokenCount
+			c.TotalTokens += file.Tokens
 			return
 		}
 	}
 
 	// New file, add it
 	c.Files = append(c.Files, file)
-	c.TotalTokens += file.TokenCount
+	c.TotalTokens += file.Tokens
 }
 
 // RemoveFile removes a file from the context by path
@@ -52,7 +66,7 @@ func (c *Context) RemoveFile(path string) {
 			newFiles = append(newFiles, f)
 		} else {
 			// Subtract tokens when removing
-			c.TotalTokens -= f.TokenCount
+			c.TotalTokens -= f.Tokens
 		}
 	}
 	c.Files = newFiles
@@ -83,7 +97,7 @@ func (c *Context) Clear() {
 func (c *Context) RecalculateTokens() {
 	total := 0
 	for _, f := range c.Files {
-		total += f.TokenCount
+		total += f.Tokens
 	}
 	c.TotalTokens = total
 }

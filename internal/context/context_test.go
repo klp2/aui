@@ -11,6 +11,10 @@ func TestNewContext(t *testing.T) {
 
 	ctx := NewContext(name, description)
 
+	if ctx.ID == "" {
+		t.Error("NewContext().ID should not be empty")
+	}
+
 	if ctx.Name != name {
 		t.Errorf("NewContext().Name = %v, want %v", ctx.Name, name)
 	}
@@ -31,10 +35,10 @@ func TestNewContext(t *testing.T) {
 func TestContextAddFile(t *testing.T) {
 	ctx := NewContext("test", "test context")
 
-	file1 := NewFile("auth/login.go")
+	file1 := NewFile("auth/login.go", "login.go")
 	file1.UpdateMetadata(1024, "hash1", "go", 100, time.Now())
 
-	file2 := NewFile("auth/session.go")
+	file2 := NewFile("auth/session.go", "session.go")
 	file2.UpdateMetadata(2048, "hash2", "go", 200, time.Now())
 
 	ctx.AddFile(file1)
@@ -62,7 +66,7 @@ func TestContextAddFile(t *testing.T) {
 func TestContextAddFileDuplicate(t *testing.T) {
 	ctx := NewContext("test", "test context")
 
-	file := NewFile("auth/login.go")
+	file := NewFile("auth/login.go", "login.go")
 	file.UpdateMetadata(1024, "hash1", "go", 100, time.Now())
 
 	ctx.AddFile(file)
@@ -81,12 +85,12 @@ func TestContextAddFileUpdated(t *testing.T) {
 	ctx := NewContext("test", "test context")
 
 	// Add original file
-	file1 := NewFile("auth/login.go")
+	file1 := NewFile("auth/login.go", "login.go")
 	file1.UpdateMetadata(1024, "hash1", "go", 100, time.Now())
 	ctx.AddFile(file1)
 
 	// Add updated version of same file (same path, different hash)
-	file2 := NewFile("auth/login.go")
+	file2 := NewFile("auth/login.go", "login.go")
 	file2.UpdateMetadata(2048, "hash2", "go", 150, time.Now().Add(1*time.Hour))
 	ctx.AddFile(file2)
 
@@ -107,13 +111,13 @@ func TestContextAddFileUpdated(t *testing.T) {
 func TestContextRemoveFile(t *testing.T) {
 	ctx := NewContext("test", "test context")
 
-	file1 := NewFile("auth/login.go")
+	file1 := NewFile("auth/login.go", "login.go")
 	file1.UpdateMetadata(1024, "hash1", "go", 100, time.Now())
 
-	file2 := NewFile("auth/session.go")
+	file2 := NewFile("auth/session.go", "session.go")
 	file2.UpdateMetadata(2048, "hash2", "go", 200, time.Now())
 
-	file3 := NewFile("auth/token.go")
+	file3 := NewFile("auth/token.go", "token.go")
 	file3.UpdateMetadata(512, "hash3", "go", 50, time.Now())
 
 	ctx.AddFile(file1)
@@ -143,10 +147,10 @@ func TestContextRemoveFile(t *testing.T) {
 func TestContextClear(t *testing.T) {
 	ctx := NewContext("test", "test context")
 
-	file1 := NewFile("file1.go")
-	file1.TokenCount = 100
-	file2 := NewFile("file2.go")
-	file2.TokenCount = 200
+	file1 := NewFile("file1.go", "file1.go")
+	file1.Tokens = 100
+	file2 := NewFile("file2.go", "file2.go")
+	file2.Tokens = 200
 
 	ctx.AddFile(file1)
 	ctx.AddFile(file2)
@@ -174,10 +178,10 @@ func TestContextClear(t *testing.T) {
 func TestContextGetFile(t *testing.T) {
 	ctx := NewContext("test", "test context")
 
-	file1 := NewFile("auth/login.go")
+	file1 := NewFile("auth/login.go", "login.go")
 	file1.UpdateMetadata(1024, "hash1", "go", 100, time.Now())
 
-	file2 := NewFile("auth/session.go")
+	file2 := NewFile("auth/session.go", "session.go")
 	file2.UpdateMetadata(2048, "hash2", "go", 200, time.Now())
 
 	ctx.AddFile(file1)
@@ -201,7 +205,7 @@ func TestContextGetFile(t *testing.T) {
 func TestContextHasFile(t *testing.T) {
 	ctx := NewContext("test", "test context")
 
-	file := NewFile("auth/login.go")
+	file := NewFile("auth/login.go", "login.go")
 	ctx.AddFile(file)
 
 	if !ctx.HasFile("auth/login.go") {
@@ -210,5 +214,27 @@ func TestContextHasFile(t *testing.T) {
 
 	if ctx.HasFile("auth/nonexistent.go") {
 		t.Error("HasFile() returned true for non-existent file")
+	}
+}
+
+func TestContextRecalculateTokens(t *testing.T) {
+	ctx := NewContext("test", "test context")
+
+	file1 := NewFile("file1.go", "file1.go")
+	file1.Tokens = 100
+	file2 := NewFile("file2.go", "file2.go")
+	file2.Tokens = 200
+
+	ctx.AddFile(file1)
+	ctx.AddFile(file2)
+
+	// Manually mess up the token count
+	ctx.TotalTokens = 999
+
+	// Recalculate
+	ctx.RecalculateTokens()
+
+	if ctx.TotalTokens != 300 {
+		t.Errorf("After RecalculateTokens(), TotalTokens = %v, want 300", ctx.TotalTokens)
 	}
 }

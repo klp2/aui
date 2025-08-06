@@ -7,11 +7,20 @@ import (
 
 func TestNewFile(t *testing.T) {
 	path := "auth/login.go"
+	name := "login.go"
 
-	file := NewFile(path)
+	file := NewFile(path, name)
+
+	if file.ID == "" {
+		t.Error("NewFile().ID should not be empty")
+	}
 
 	if file.Path != path {
 		t.Errorf("NewFile().Path = %v, want %v", file.Path, path)
+	}
+
+	if file.Name != name {
+		t.Errorf("NewFile().Name = %v, want %v", file.Name, name)
 	}
 
 	if file.Size != 0 {
@@ -26,17 +35,17 @@ func TestNewFile(t *testing.T) {
 		t.Errorf("NewFile().Language = %v, want empty", file.Language)
 	}
 
-	if file.TokenCount != 0 {
-		t.Errorf("NewFile().TokenCount = %v, want 0", file.TokenCount)
+	if file.Tokens != 0 {
+		t.Errorf("NewFile().Tokens = %v, want 0", file.Tokens)
 	}
 
-	if file.LastModified.IsZero() {
-		t.Errorf("NewFile().LastModified should not be zero")
+	if file.ModifiedAt.IsZero() {
+		t.Errorf("NewFile().ModifiedAt should not be zero")
 	}
 }
 
 func TestFileUpdateMetadata(t *testing.T) {
-	file := NewFile("main.go")
+	file := NewFile("main.go", "main.go")
 
 	size := int64(1024)
 	hash := "abc123def456"
@@ -58,96 +67,150 @@ func TestFileUpdateMetadata(t *testing.T) {
 		t.Errorf("After UpdateMetadata(), Language = %v, want %v", file.Language, lang)
 	}
 
-	if file.TokenCount != tokens {
-		t.Errorf("After UpdateMetadata(), TokenCount = %v, want %v", file.TokenCount, tokens)
+	if file.Tokens != tokens {
+		t.Errorf("After UpdateMetadata(), Tokens = %v, want %v", file.Tokens, tokens)
 	}
 
-	if !file.LastModified.Equal(modTime) {
-		t.Errorf("After UpdateMetadata(), LastModified = %v, want %v", file.LastModified, modTime)
+	if !file.ModifiedAt.Equal(modTime) {
+		t.Errorf("After UpdateMetadata(), ModifiedAt = %v, want %v", file.ModifiedAt, modTime)
 	}
 }
 
 func TestFileDetectLanguage(t *testing.T) {
 	tests := []struct {
+		name     string
 		path     string
-		expected string
+		wantLang string
 	}{
-		{"main.go", "go"},
-		{"app.py", "python"},
-		{"index.js", "javascript"},
-		{"App.tsx", "typescript"},
-		{"style.css", "css"},
-		{"Cargo.toml", "toml"},
-		{"README.md", "markdown"},
-		{"Makefile", "makefile"},
-		{"unknown.xyz", ""},
+		{"Go file", "main.go", "go"},
+		{"Python file", "script.py", "python"},
+		{"JavaScript file", "app.js", "javascript"},
+		{"TypeScript file", "app.ts", "typescript"},
+		{"Rust file", "main.rs", "rust"},
+		{"C file", "program.c", "c"},
+		{"C++ file", "program.cpp", "cpp"},
+		{"Java file", "Main.java", "java"},
+		{"Ruby file", "script.rb", "ruby"},
+		{"Shell script", "deploy.sh", "shell"},
+		{"Makefile", "Makefile", "makefile"},
+		{"Lowercase makefile", "makefile", "makefile"},
+		{"JSON file", "config.json", "json"},
+		{"YAML file", "config.yaml", "yaml"},
+		{"Markdown file", "README.md", "markdown"},
+		{"Unknown extension", "data.xyz", ""},
+		{"No extension", "README", ""},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.path, func(t *testing.T) {
-			file := NewFile(tt.path)
+		t.Run(tt.name, func(t *testing.T) {
+			file := NewFile(tt.path, tt.path)
 			file.DetectLanguage()
 
-			if file.Language != tt.expected {
-				t.Errorf("DetectLanguage() for %v = %v, want %v", tt.path, file.Language, tt.expected)
+			if file.Language != tt.wantLang {
+				t.Errorf("DetectLanguage() for %v = %v, want %v", tt.path, file.Language, tt.wantLang)
 			}
 		})
 	}
 }
 
 func TestFileEquals(t *testing.T) {
-	file1 := NewFile("auth/login.go")
-	file1.UpdateMetadata(1024, "hash1", "go", 100, time.Now())
+	// Test files with same path and hash
+	file1 := NewFile("main.go", "main.go")
+	file1.Hash = "abc123"
 
-	file2 := NewFile("auth/login.go")
-	file2.UpdateMetadata(1024, "hash1", "go", 100, time.Now())
+	file2 := NewFile("main.go", "main.go")
+	file2.Hash = "abc123"
 
-	file3 := NewFile("auth/session.go")
-	file3.UpdateMetadata(1024, "hash1", "go", 100, time.Now())
+	if !file1.Equals(file2) {
+		t.Error("Files with same path and hash should be equal")
+	}
 
-	file4 := NewFile("auth/login.go")
-	file4.UpdateMetadata(1024, "hash2", "go", 100, time.Now())
+	// Test files with same path, different hash
+	file3 := NewFile("main.go", "main.go")
+	file3.Hash = "def456"
+
+	if file1.Equals(file3) {
+		t.Error("Files with same path but different hash should not be equal")
+	}
+
+	// Test files with different path, same hash
+	file4 := NewFile("other.go", "other.go")
+	file4.Hash = "abc123"
+
+	if file1.Equals(file4) {
+		t.Error("Files with different path should not be equal")
+	}
+
+	// Test nil file
+	if file1.Equals(nil) {
+		t.Error("File should not equal nil")
+	}
+}
+
+func TestFileNeedsUpdate(t *testing.T) {
+	baseTime := time.Now()
+	file := NewFile("main.go", "main.go")
+	file.Hash = "abc123"
+	file.ModifiedAt = baseTime
 
 	tests := []struct {
-		name     string
-		file1    *File
-		file2    *File
-		expected bool
+		name       string
+		newHash    string
+		newModTime time.Time
+		wantUpdate bool
 	}{
-		{"same path and hash", file1, file2, true},
-		{"different path", file1, file3, false},
-		{"same path different hash", file1, file4, false},
+		{
+			name:       "Same hash, same time",
+			newHash:    "abc123",
+			newModTime: baseTime,
+			wantUpdate: false,
+		},
+		{
+			name:       "Different hash, same time",
+			newHash:    "def456",
+			newModTime: baseTime,
+			wantUpdate: true,
+		},
+		{
+			name:       "Same hash, newer time",
+			newHash:    "abc123",
+			newModTime: baseTime.Add(1 * time.Hour),
+			wantUpdate: true,
+		},
+		{
+			name:       "Same hash, older time",
+			newHash:    "abc123",
+			newModTime: baseTime.Add(-1 * time.Hour),
+			wantUpdate: false,
+		},
+		{
+			name:       "Different hash, newer time",
+			newHash:    "def456",
+			newModTime: baseTime.Add(1 * time.Hour),
+			wantUpdate: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.file1.Equals(tt.file2)
-			if result != tt.expected {
-				t.Errorf("Equals() = %v, want %v", result, tt.expected)
+			result := file.NeedsUpdate(tt.newHash, tt.newModTime)
+			if result != tt.wantUpdate {
+				t.Errorf("NeedsUpdate() = %v, want %v", result, tt.wantUpdate)
 			}
 		})
 	}
 }
 
-func TestFileNeedsUpdate(t *testing.T) {
-	oldTime := time.Now().Add(-2 * time.Hour)
-	newTime := time.Now()
+func TestGenerateFileID(t *testing.T) {
+	// Test that IDs are unique
+	id1 := generateFileID()
+	id2 := generateFileID()
 
-	file := NewFile("main.go")
-	file.UpdateMetadata(1024, "hash1", "go", 100, oldTime)
-
-	// File with same hash shouldn't need update
-	if file.NeedsUpdate("hash1", oldTime) {
-		t.Error("NeedsUpdate() = true for same hash and time, want false")
+	if id1 == id2 {
+		t.Error("generateFileID() should produce unique IDs")
 	}
 
-	// File with different hash should need update
-	if !file.NeedsUpdate("hash2", oldTime) {
-		t.Error("NeedsUpdate() = false for different hash, want true")
-	}
-
-	// File with newer modification time should need update
-	if !file.NeedsUpdate("hash1", newTime) {
-		t.Error("NeedsUpdate() = false for newer modification time, want true")
+	if len(id1) != 16 {
+		t.Errorf("generateFileID() should produce 16-character hex strings, got %d", len(id1))
 	}
 }
