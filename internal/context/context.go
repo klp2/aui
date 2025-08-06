@@ -23,7 +23,7 @@ func (c *Context) AddFile(file *File) {
 	if file == nil {
 		return
 	}
-	
+
 	// Check if file with same path already exists
 	for i, f := range c.Files {
 		if f.Path == file.Path {
@@ -38,7 +38,7 @@ func (c *Context) AddFile(file *File) {
 			return
 		}
 	}
-	
+
 	// New file, add it
 	c.Files = append(c.Files, file)
 	c.TotalTokens += file.TokenCount

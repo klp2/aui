@@ -37,14 +37,14 @@ func (f *File) UpdateMetadata(size int64, hash, language string, tokenCount int,
 func (f *File) DetectLanguage() {
 	ext := strings.ToLower(filepath.Ext(f.Path))
 	base := filepath.Base(f.Path)
-	
+
 	// Check special filenames first
 	switch base {
-		case "Makefile", "makefile":
-			f.Language = "makefile"
-			return
+	case "Makefile", "makefile":
+		f.Language = "makefile"
+		return
 	}
-	
+
 	// Check by extension
 	languageMap := map[string]string{
 		".go":   "go",
@@ -74,7 +74,7 @@ func (f *File) DetectLanguage() {
 		".html": "html",
 		".htm":  "html",
 	}
-	
+
 	if lang, ok := languageMap[ext]; ok {
 		f.Language = lang
 	} else {
@@ -96,11 +96,11 @@ func (f *File) NeedsUpdate(newHash string, newModTime time.Time) bool {
 	if f.Hash != newHash {
 		return true
 	}
-	
+
 	// If modification time is newer, needs update
 	if newModTime.After(f.LastModified) {
 		return true
 	}
-	
+
 	return false
 }

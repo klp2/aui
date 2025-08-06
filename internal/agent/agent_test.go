@@ -6,10 +6,10 @@ import (
 
 func TestNewAgent(t *testing.T) {
 	tests := []struct {
-		name     string
+		name      string
 		agentName string
-		model    string
-		want     Agent
+		model     string
+		want      Agent
 	}{
 		{
 			name:      "create Claude agent",
@@ -38,7 +38,7 @@ func TestNewAgent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := NewAgent(tt.agentName, tt.model)
-			
+
 			if got.Name != tt.want.Name {
 				t.Errorf("NewAgent().Name = %v, want %v", got.Name, tt.want.Name)
 			}
@@ -57,14 +57,14 @@ func TestNewAgent(t *testing.T) {
 
 func TestAgentAssignTask(t *testing.T) {
 	agent := NewAgent("Claude", "claude-3.5-sonnet")
-	
+
 	task := "Fix authentication bug"
 	agent.AssignTask(task)
-	
+
 	if agent.Task != task {
 		t.Errorf("After AssignTask(), Task = %v, want %v", agent.Task, task)
 	}
-	
+
 	if agent.Status != StatusWorking {
 		t.Errorf("After AssignTask(), Status = %v, want %v", agent.Status, StatusWorking)
 	}
@@ -73,13 +73,13 @@ func TestAgentAssignTask(t *testing.T) {
 func TestAgentCompleteTask(t *testing.T) {
 	agent := NewAgent("Gemini", "gemini-1.5-pro")
 	agent.AssignTask("Review code")
-	
+
 	agent.CompleteTask()
-	
+
 	if agent.Task != "" {
 		t.Errorf("After CompleteTask(), Task = %v, want empty string", agent.Task)
 	}
-	
+
 	if agent.Status != StatusReady {
 		t.Errorf("After CompleteTask(), Status = %v, want %v", agent.Status, StatusReady)
 	}
@@ -87,14 +87,14 @@ func TestAgentCompleteTask(t *testing.T) {
 
 func TestAgentSetError(t *testing.T) {
 	agent := NewAgent("Claude", "claude-3.5-sonnet")
-	
+
 	errorMsg := "API rate limit exceeded"
 	agent.SetError(errorMsg)
-	
+
 	if agent.Status != StatusError {
 		t.Errorf("After SetError(), Status = %v, want %v", agent.Status, StatusError)
 	}
-	
+
 	if agent.LastError != errorMsg {
 		t.Errorf("After SetError(), LastError = %v, want %v", agent.LastError, errorMsg)
 	}
